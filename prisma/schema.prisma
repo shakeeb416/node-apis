@@ -8,22 +8,30 @@ datasource db {
 }
 
 model User {
-  id       Int     @id @default(autoincrement())
-  email    String  @unique
-  password String
-  address  String?
-  name     String
-  status   String  @default("active")
-  username String  @unique
-  phone    String?
-  posts    Post[]
+  id         Int      @id @default(autoincrement())
+  email      String   @unique
+  password   String
+  address    String?
+  name       String
+  status     String   @default("active")
+  username   String   @unique
+  phone      String?
+  avatar     String?
+  posts      Post[]
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  deletedAt  DateTime?
 }
 
 model Post {
-  id        Int      @id @default(autoincrement())
-  content   String
-  createdAt DateTime @default(now())
-  mediaUrl  String?
-  userId    Int?
-  user      User?    @relation(fields: [userId], references: [id])
+  id         Int      @id @default(autoincrement())
+  content    String
+  media      String?  // Changed from mediaUrl
+  userId     Int?
+  user       User?    @relation(fields: [userId], references: [id])
+  
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  deletedAt  DateTime?
 }

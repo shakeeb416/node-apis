@@ -2,6 +2,8 @@ const path = require("path");
 const { PrismaClient } = require("@prisma/client");
 const { successResponse, errorResponse } = require("../utils/response");
 const serializePost = require("../utils/serializePost");
+const serializePagination = require("../utils/serializePagination");
+const { DEFAULT_LIMIT } = require("../config");
 
 const prisma = new PrismaClient();
 
@@ -13,17 +15,16 @@ const createPost = async (req, res) => {
   if (!content) {
     return errorResponse(res, "Content is required", 400);
   }
-
-  let mediaUrl = null;
+  let media = null;
   if (file) {
-    mediaUrl = `/uploads/${file.filename}`;
+    media = `${file.filename}`;
   }
 
   try {
     const post = await prisma.post.create({
       data: {
         content,
-        mediaUrl,
+        media,
         userId: req.user.userId, // 👈 from decoded JWT
       },
       include: {
@@ -49,31 +50,59 @@ const createPost = async (req, res) => {
 
 // ✅ Get all posts (with optional search)
 const getAllPosts = async (req, res) => {
-  const { search } = req.query;
+  const { search, page = 1, limit } = req.query;
+
+  const trimmedSearch = search?.trim();
+
+  let per_page = (!isNaN(limit) && Number(limit)) || DEFAULT_LIMIT;
+  const pageNumber = parseInt(page);
+  const skip = (pageNumber - 1) * per_page;
 
   try {
-    const posts = await prisma.post.findMany({
-      where: search
-        ? {
-            content: {
-              contains: search,
-              mode: "insensitive",
+    const where = trimmedSearch
+      ? {
+          content: {
+            contains: trimmedSearch,
+            mode: "insensitive",
+          },
+        }
+      : undefined;
+
+    const [totalCount, posts] = await Promise.all([
+      prisma.post.count({ where }),
+      prisma.post.findMany({
+        where,
+        skip,
+        take: per_page,
+        orderBy: { createdAt: "desc" },
+        include: {
+          user: {
+            select: {
+              name: true,
+              email: true,
             },
-          }
-        : undefined,
-      orderBy: { createdAt: "desc" },
-      include: {
-        user: {
-          select: {
-            name: true,
-            email: true,
           },
         },
-      },
-    });
+      }),
+    ]);
+
+    if (posts.length === 0) {
+      return errorResponse(res, "No posts found", 404);
+    }
 
     const serializedPosts = posts.map(serializePost);
-    return successResponse(res, "Posts fetched successfully", serializedPosts);
+    const pagination = serializePagination({
+      total: totalCount,
+      page: pageNumber,
+      limit: per_page,
+    });
+
+    return successResponse(
+      res,
+      "Posts fetched successfully",
+      serializedPosts,
+      pagination
+    );
   } catch (err) {
     console.error(err);
     return errorResponse(res, "Failed to fetch posts");
@@ -120,8 +149,19 @@ const getPostById = async (req, res) => {
 // ✅ Get all posts by USER_ID
 const getPostsByUserId = async (req, res) => {
   const userId = parseInt(req.params.id);
+  const { page = 1, search = "", limit } = req.query;
 
+  // ✅ Validate userId
   if (isNaN(userId)) return errorResponse(res, "Invalid user ID", 400);
+
+  let per_page = (!isNaN(limit) && Number(limit)) || DEFAULT_LIMIT;
+
+  // ✅ Validate and sanitize page
+  const pageNumber = Math.max(1, parseInt(page) || 1);
+  const skip = (pageNumber - 1) * per_page;
+
+  // ✅ Trim and check search input
+  const trimmedSearch = search.trim();
 
   try {
     const user = await prisma.user.findUnique({
@@ -129,29 +169,65 @@ const getPostsByUserId = async (req, res) => {
     });
 
     if (!user) {
-      return errorResponse(res, "User not found", 404); // ✅ Return 404
+      return errorResponse(res, "User not found", 404);
     }
 
-    const posts = await prisma.post.findMany({
-      where: { userId },
-      orderBy: { createdAt: "desc" },
-      include: {
-        user: {
-          select: {
-            name: true,
-            email: true,
+    // ✅ Prepare dynamic where condition
+    const postWhere = {
+      userId,
+      ...(trimmedSearch.length > 1 && {
+        content: {
+          contains: trimmedSearch,
+          mode: "insensitive",
+        },
+      }),
+    };
+
+    const [totalCount, posts] = await Promise.all([
+      prisma.post.count({ where: postWhere }),
+      prisma.post.findMany({
+        where: postWhere,
+        skip,
+        take: per_page,
+        orderBy: { createdAt: "desc" },
+        include: {
+          user: {
+            select: {
+              name: true,
+              email: true,
+            },
           },
         },
-      },
+      }),
+    ]);
+
+    if (posts.length === 0) {
+      return errorResponse(res, "No posts found", 404);
+    }
+
+    const serializedPosts = posts.map(serializePost);
+    const pagination = serializePagination({
+      total: totalCount,
+      page: pageNumber,
+      limit: per_page,
     });
 
+    // ✅ Return 200 with empty array (not 404)
     return successResponse(
       res,
       "Posts fetched successfully",
-      posts.map(serializePost)
+      serializedPosts,
+      pagination
     );
   } catch (err) {
-    console.error(err);
+    // ✅ Add context to error log
+    console.error("Error fetching posts by user", {
+      userId,
+      search: trimmedSearch,
+      page: pageNumber,
+      error: err.message,
+    });
+
     return errorResponse(res, "Failed to fetch posts");
   }
 };

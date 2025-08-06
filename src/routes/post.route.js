@@ -2,15 +2,17 @@ const express = require("express");
 const router = express.Router();
 const auth = require("../middleware/auth");
 const upload = require("../middleware/upload");
+
 const {
   createPost,
   getAllPosts,
   getPostById,
   getPostsByUserId,
 } = require("../controllers/post.controller");
+const { postUpload } = require("../middleware/upload");
 
 // ✅ POST /create_post with optional media
-router.post("/create_post", auth, upload.single("media"), createPost);
+router.post("/create_post", auth, postUpload.single("media"), createPost);
 
 // ✅ GET /get_all_posts
 router.get("/get_all_posts", getAllPosts);
