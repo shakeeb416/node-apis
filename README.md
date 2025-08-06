@@ -1,6 +1,6 @@
 # 📝 Node Posts API
 
-A simple and scalable **RESTful API** built with **Node.js**, **Express**, **Prisma**, and **PostgreSQL** to handle user authentication, media uploads (image/video), and CRUD operations for posts. The backend supports file uploads via AWS S3 and includes JWT-based authentication and pagination support.
+A scalable and robust RESTful API built with Node.js, Express, Prisma, and PostgreSQL for managing user authentication, media uploads (image/video), and post CRUD operations. The backend integrates AWS S3 for file storage and supports JWT-based authentication and pagination.
 
 ---
 
