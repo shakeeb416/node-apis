@@ -154,6 +154,20 @@ See `.env.example` for environment variable setup.
 
 ---
 
+### 📬 Postman Collection
+
+You can test all available API routes using the public Postman collection below:
+
+- Includes endpoints for **authentication**, **users**, **posts**, and **file uploads**.
+- Use the **Login** route to obtain a JWT token required for protected endpoints.
+- Covers `GET`, `POST`, `PATCH`, and `DELETE` requests with appropriate headers and request bodies.
+
+🔗 [Open Postman Collection](https://www.postman.com/avionics-geologist-50824642/workspace/shakeeb416/collection/24038022-a26f1e31-63d0-47aa-83b8-57a961008689?action=share&creator=24038022)
+
+> You can fork the collection and run it directly from Postman.
+
+---
+
 ## ✨ Author
 
 Built by **Muhammad Shakeeb**  
